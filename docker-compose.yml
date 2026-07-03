@@ -7,3 +7,11 @@ services:
       - .:/os
     ports:
       - "6080:6080"
+
+  docs:
+    image: squidfunk/mkdocs-material
+    volumes:
+      - ./docs:/docs
+    ports:
+      - "8000:8000"
+    command: serve --dev-addr=0.0.0.0:8000 -f /docs/mkdocs.yml

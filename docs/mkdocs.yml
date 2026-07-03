@@ -1,0 +1,15 @@
+site_name: syntel-os
+site_description: Construindo um sistema operacional do zero
+docs_dir: .
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: cyan
+    accent: purple
+  font:
+    code: JetBrains Mono
+
+nav:
+  - Início: index.md
