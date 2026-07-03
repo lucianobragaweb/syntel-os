@@ -1,8 +1,20 @@
-all:
-	nasm -f bin boot.asm -o boot.bin
-	gcc -ffreestanding -m32 -c kernel.c -o kernel.o
-	ld -m elf_i386 -T linker.ld -o kernel.bin kernel.o
-	cat boot.bin kernel.bin > os.img
+BUILD := build
 
-run:
-	qemu-system-i386 -drive format=raw,file=os.img
+all: $(BUILD)
+	nasm -f bin boot.asm -o $(BUILD)/boot.bin
+	gcc -ffreestanding -m32 -c kernel.c -o $(BUILD)/kernel.o
+	gcc -ffreestanding -m32 -c screen.c -o $(BUILD)/screen.o
+	ld -m elf_i386 -T linker.ld -o $(BUILD)/kernel.elf $(BUILD)/kernel.o $(BUILD)/screen.o
+	objcopy -O binary $(BUILD)/kernel.elf $(BUILD)/kernel.bin
+	cat $(BUILD)/boot.bin $(BUILD)/kernel.bin > $(BUILD)/os.img
+	truncate -s 1M $(BUILD)/os.img
+
+$(BUILD):
+	mkdir -p $(BUILD)
+
+run: all
+	-pkill -f qemu-system-i386
+	qemu-system-i386 -drive format=raw,file=$(BUILD)/os.img -display curses
+
+clean:
+	rm -rf $(BUILD)

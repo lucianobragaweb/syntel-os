@@ -1,0 +1,7 @@
+services:
+  syntel-os:
+    build: .
+    volumes:
+      - .:/os
+    ports:
+      - "6080:6080"
