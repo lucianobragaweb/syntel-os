@@ -3,6 +3,7 @@
 #include "pic.h"
 #include "irq.h"
 #include "keyboard.h"
+#include "shell.h"
 
 #define SCREEN_W 1024
 #define SCREEN_H 768
@@ -22,6 +23,12 @@ static void timer_handler(registers_t *regs)
         return;
     char c = ((ticks / 27) % 2) ? '_' : ' ';
     fb_char_at(fb_getx(), fb_gety(), c, BRAIN_RED, 0x000000, 1);
+}
+
+/* usado pelo shell (comando uptime) */
+int get_ticks(void)
+{
+    return ticks;
 }
 
 /* brain-ascii.txt — cérebro + circuito, 44 chars × 24 linhas */
@@ -133,11 +140,10 @@ void kernel_main()
     fb_setpos(SCREEN_W - 48 - 104, SCREEN_H - 48);
     print_color("syntel.net.br", DARK_RED);
 
-    /* cursor de digitação na linha abaixo do prompt — o eco do teclado escreve aqui */
+    /* shell assume a partir da linha abaixo do prompt */
     fb_setpos(360, 676);
     fb_setcolor(0xFFFFFF, 0x000000);
     boot_done = 1;
 
-    for (;;)
-        ;
+    shell_run();
 }

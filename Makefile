@@ -11,6 +11,7 @@ all: $(BUILD)
 	nasm -f elf32 $(SRC)/kernel/isr.asm  -o $(BUILD)/isr_stubs.o
 	nasm -f elf32 $(SRC)/kernel/irq.asm  -o $(BUILD)/irq_stubs.o
 	gcc $(CFLAGS) -c $(SRC)/kernel/kernel.c    -o $(BUILD)/kernel.o
+	gcc $(CFLAGS) -c $(SRC)/kernel/shell.c     -o $(BUILD)/shell.o
 	gcc $(CFLAGS) -c $(SRC)/kernel/idt.c       -o $(BUILD)/idt.o
 	gcc $(CFLAGS) -c $(SRC)/kernel/isr.c       -o $(BUILD)/isr.o
 	gcc $(CFLAGS) -c $(SRC)/kernel/pic.c       -o $(BUILD)/pic.o
@@ -18,7 +19,8 @@ all: $(BUILD)
 	gcc $(CFLAGS) -c $(SRC)/drivers/fb.c       -o $(BUILD)/fb.o
 	gcc $(CFLAGS) -c $(SRC)/drivers/keyboard.c -o $(BUILD)/keyboard.o
 	ld -m elf_i386 -T $(SRC)/boot/linker.ld -o $(BUILD)/kernel.elf \
-		$(BUILD)/start.o $(BUILD)/kernel.o $(BUILD)/fb.o $(BUILD)/idt.o \
+		$(BUILD)/start.o $(BUILD)/kernel.o $(BUILD)/shell.o \
+		$(BUILD)/fb.o $(BUILD)/idt.o \
 		$(BUILD)/isr.o $(BUILD)/isr_stubs.o \
 		$(BUILD)/pic.o $(BUILD)/irq.o $(BUILD)/irq_stubs.o \
 		$(BUILD)/keyboard.o

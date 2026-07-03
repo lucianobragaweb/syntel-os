@@ -1,10 +1,16 @@
 #include "keyboard.h"
 #include "irq.h"
 #include "io.h"
-#include "fb.h"
 
 #define KB_DATA 0x60
 #define SC_MAX  58
+
+/* Buffer circular: o handler de interrupção PRODUZ, keyboard_getchar CONSOME.
+   O handler nunca escreve na tela — só anota e retorna rápido. */
+#define KB_BUF_SIZE 256
+static char kb_buf[KB_BUF_SIZE];
+static volatile int kb_head = 0;  /* onde o handler escreve  */
+static volatile int kb_tail = 0;  /* onde o kernel lê        */
 
 /* Scancode set 1: índice = scancode, valor = caractere ASCII */
 static const char sc_ascii[SC_MAX] = {
@@ -45,7 +51,24 @@ static void keyboard_handler(registers_t *regs) {
     if (sc >= SC_MAX) return;
 
     char c = shift ? sc_shift[sc] : sc_ascii[sc];
-    if (c) putchar(c);
+    if (!c) return;
+
+    /* deposita no buffer; se cheio, descarta (nunca bloqueia numa interrupção) */
+    int next = (kb_head + 1) % KB_BUF_SIZE;
+    if (next != kb_tail) {
+        kb_buf[kb_head] = c;
+        kb_head = next;
+    }
+}
+
+/* Bloqueia até haver um caractere. O hlt pausa a CPU até a próxima
+   interrupção — sem busy-wait queimando ciclos. */
+char keyboard_getchar(void) {
+    while (kb_head == kb_tail)
+        __asm__ volatile("hlt");
+    char c = kb_buf[kb_tail];
+    kb_tail = (kb_tail + 1) % KB_BUF_SIZE;
+    return c;
 }
 
 void keyboard_init(void) {

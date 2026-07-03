@@ -122,8 +122,31 @@ void fb_art(const char **lines, int x0, int y0, uint32_t fg) {
     }
 }
 
+/* Sobe todo o conteúdo 16px (uma linha de texto) e limpa a última linha.
+   Nota: pixels em 32bpp têm layout B,G,R,0 — um u32 0x00RRGGBB casa direto. */
+static void fb_scroll(void) {
+    uint32_t *dst = (uint32_t*)fb_base;
+    uint32_t *src = (uint32_t*)(fb_base + fb_pitch * 16);
+    uint32_t count = (fb_height - 16) * fb_pitch / 4;
+    for (uint32_t i = 0; i < count; i++)
+        dst[i] = src[i];
+    uint32_t *last = (uint32_t*)(fb_base + (fb_height - 16) * fb_pitch);
+    for (uint32_t i = 0; i < fb_pitch * 16 / 4; i++)
+        last[i] = color_bg;
+}
+
+/* Avança uma linha de texto; no fim da tela, faz scroll */
+static void newline(void) {
+    cur_x = margin_x;
+    cur_y += 16;
+    if (cur_y + 16 > (int)fb_height) {
+        fb_scroll();
+        cur_y -= 16;
+    }
+}
+
 void putchar(char c) {
-    if (c == '\n') { cur_x = margin_x; cur_y += 16; return; }
+    if (c == '\n') { newline(); return; }
     if (c == '\b') {
         if (cur_x >= margin_x + 8) cur_x -= 8;
         fb_char_at(cur_x, cur_y, ' ', color_fg, color_bg, 1);
@@ -131,7 +154,7 @@ void putchar(char c) {
     }
     fb_char_at(cur_x, cur_y, c, color_fg, color_bg, 1);
     cur_x += 8;
-    if (cur_x + 8 > (int)fb_width) { cur_x = margin_x; cur_y += 16; }
+    if (cur_x + 8 > (int)fb_width) newline();
 }
 
 void print(const char *s) { for (int i = 0; s[i]; i++) putchar(s[i]); }
