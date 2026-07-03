@@ -6,12 +6,63 @@ start:
     mov ds, ax
     mov es, ax
 
-    mov si, msg
-    call print
-
+    ; Carrega kernel — 30 setores = 15 KB em 0x1000..0x4C00
     mov bx, 0x1000
-    mov dh, 15
+    mov dh, 30
     call load_kernel
+
+    ; Copia a fonte 8x16 do BIOS para 0x6000 (256 chars × 16 bytes = 4096 bytes)
+    ; ATENÇÃO: destino não pode alcançar 0x7C00, senão sobrescreve este bootloader
+    mov ax, 0x1130
+    mov bh, 0x06        ; fonte 8x16
+    int 0x10            ; ES:BP → fonte
+    mov ax, es
+    mov ds, ax          ; DS:SI = fonte
+    mov si, bp
+    xor ax, ax
+    mov es, ax          ; ES:DI = 0x0000:0x6000
+    mov di, 0x6000
+    mov cx, 4096
+    rep movsb
+    xor ax, ax
+    mov ds, ax          ; restaura DS
+
+    ; Bochs VBE via port I/O — funciona em modo real, garantido no QEMU
+    ; Porta 0x01CE = índice, 0x01CF = dado
+    mov dx, 0x01CE
+    mov ax, 4           ; índice VBE_DISPI_INDEX_ENABLE
+    out dx, ax
+    mov dx, 0x01CF
+    xor ax, ax          ; desabilita antes de reconfigurar
+    out dx, ax
+
+    mov dx, 0x01CE
+    mov ax, 1           ; VBE_DISPI_INDEX_XRES
+    out dx, ax
+    mov dx, 0x01CF
+    mov ax, 1024
+    out dx, ax
+
+    mov dx, 0x01CE
+    mov ax, 2           ; VBE_DISPI_INDEX_YRES
+    out dx, ax
+    mov dx, 0x01CF
+    mov ax, 768
+    out dx, ax
+
+    mov dx, 0x01CE
+    mov ax, 3           ; VBE_DISPI_INDEX_BPP
+    out dx, ax
+    mov dx, 0x01CF
+    mov ax, 32          ; 32bpp (mais compatível que 24)
+    out dx, ax
+
+    mov dx, 0x01CE
+    mov ax, 4           ; VBE_DISPI_INDEX_ENABLE
+    out dx, ax
+    mov dx, 0x01CF
+    mov ax, 0x41        ; VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED
+    out dx, ax
 
     cli
     lgdt [gdt_descriptor]
@@ -33,17 +84,6 @@ init_pm:
     jmp 0x1000
 
 [bits 16]
-print:
-    mov ah, 0x0e
-.loop:
-    lodsb
-    cmp al, 0
-    je .done
-    int 0x10
-    jmp .loop
-.done:
-    ret
-
 load_kernel:
     mov ah, 0x02
     mov al, dh
@@ -55,12 +95,7 @@ load_kernel:
     ret
 
 disk_error:
-    mov si, msg_disk_err
-    call print
     hlt
-
-msg db "Booting kernel...", 0
-msg_disk_err db "Disk error!", 0
 
 gdt_start:
     dq 0
@@ -89,4 +124,3 @@ DATA_SEG equ gdt_data - gdt_start
 
 times 510-($-$$) db 0
 dw 0xaa55
-

@@ -13,3 +13,6 @@ theme:
 
 nav:
   - Início: index.md
+  - IDT — Interrupções: idt.md
+  - PIC — Hardware Interrupts: pic.md
+  - Teclado — IRQ1 e Scancodes: keyboard.md
