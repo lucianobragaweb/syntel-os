@@ -16,7 +16,7 @@ WORKDIR /os
 
 COPY . .
 
-COPY entrypoint.sh /entrypoint.sh
+COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 6080

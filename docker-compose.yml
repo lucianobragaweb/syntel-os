@@ -1,6 +1,8 @@
 services:
   syntel-os:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
     volumes:
       - .:/os
     ports:
