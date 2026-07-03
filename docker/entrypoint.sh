@@ -15,7 +15,7 @@ start_qemu() {
 }
 
 snapshot() {
-    find /os/src -maxdepth 1 -type f | sort | xargs stat -c "%n:%Y:%s" 2>/dev/null
+    find /os/src -type f | sort | xargs stat -c "%n:%Y:%s" 2>/dev/null
     stat -c "%n:%Y:%s" /os/Makefile 2>/dev/null
 }
 

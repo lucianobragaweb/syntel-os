@@ -1,19 +1,23 @@
 BUILD := build
 SRC   := src
 
+# Headers compartilhados + headers de cada subsistema
+CFLAGS := -ffreestanding -m32 \
+          -I$(SRC)/include -I$(SRC)/kernel -I$(SRC)/drivers
+
 all: $(BUILD)
-	nasm -f bin   $(SRC)/boot.asm  -o $(BUILD)/boot.bin
-	nasm -f elf32 $(SRC)/start.asm -o $(BUILD)/start.o
-	nasm -f elf32 $(SRC)/isr.asm   -o $(BUILD)/isr_stubs.o
-	nasm -f elf32 $(SRC)/irq.asm   -o $(BUILD)/irq_stubs.o
-	gcc -ffreestanding -m32 -c $(SRC)/kernel.c   -o $(BUILD)/kernel.o
-	gcc -ffreestanding -m32 -c $(SRC)/fb.c       -o $(BUILD)/fb.o
-	gcc -ffreestanding -m32 -c $(SRC)/idt.c      -o $(BUILD)/idt.o
-	gcc -ffreestanding -m32 -c $(SRC)/isr.c      -o $(BUILD)/isr.o
-	gcc -ffreestanding -m32 -c $(SRC)/pic.c      -o $(BUILD)/pic.o
-	gcc -ffreestanding -m32 -c $(SRC)/irq.c      -o $(BUILD)/irq.o
-	gcc -ffreestanding -m32 -c $(SRC)/keyboard.c -o $(BUILD)/keyboard.o
-	ld -m elf_i386 -T $(SRC)/linker.ld -o $(BUILD)/kernel.elf \
+	nasm -f bin   $(SRC)/boot/boot.asm   -o $(BUILD)/boot.bin
+	nasm -f elf32 $(SRC)/boot/start.asm  -o $(BUILD)/start.o
+	nasm -f elf32 $(SRC)/kernel/isr.asm  -o $(BUILD)/isr_stubs.o
+	nasm -f elf32 $(SRC)/kernel/irq.asm  -o $(BUILD)/irq_stubs.o
+	gcc $(CFLAGS) -c $(SRC)/kernel/kernel.c    -o $(BUILD)/kernel.o
+	gcc $(CFLAGS) -c $(SRC)/kernel/idt.c       -o $(BUILD)/idt.o
+	gcc $(CFLAGS) -c $(SRC)/kernel/isr.c       -o $(BUILD)/isr.o
+	gcc $(CFLAGS) -c $(SRC)/kernel/pic.c       -o $(BUILD)/pic.o
+	gcc $(CFLAGS) -c $(SRC)/kernel/irq.c       -o $(BUILD)/irq.o
+	gcc $(CFLAGS) -c $(SRC)/drivers/fb.c       -o $(BUILD)/fb.o
+	gcc $(CFLAGS) -c $(SRC)/drivers/keyboard.c -o $(BUILD)/keyboard.o
+	ld -m elf_i386 -T $(SRC)/boot/linker.ld -o $(BUILD)/kernel.elf \
 		$(BUILD)/start.o $(BUILD)/kernel.o $(BUILD)/fb.o $(BUILD)/idt.o \
 		$(BUILD)/isr.o $(BUILD)/isr_stubs.o \
 		$(BUILD)/pic.o $(BUILD)/irq.o $(BUILD)/irq_stubs.o \

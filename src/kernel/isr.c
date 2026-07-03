@@ -1,5 +1,5 @@
 #include "isr.h"
-#include "screen.h"
+#include "fb.h"
 
 static const char *exceptions[] = {
     "Division Error",

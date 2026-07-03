@@ -1,7 +1,7 @@
 #include "keyboard.h"
 #include "irq.h"
 #include "io.h"
-#include "screen.h"
+#include "fb.h"
 
 #define KB_DATA 0x60
 #define SC_MAX  58
