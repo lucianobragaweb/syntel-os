@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="syntel-os.png" alt="syntel-os" width="100%"/>
+</p>
+
 # syntel-os
 
 SO bare-metal x86 minimalista, escrito do zero para fins educacionais.
