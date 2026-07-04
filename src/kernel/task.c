@@ -1,5 +1,6 @@
 #include "task.h"
 #include "memory.h"
+#include "sync.h"
 
 #define STACK_SIZE 8192
 
@@ -30,13 +31,17 @@ void task_init(const char *name) {
 }
 
 int task_create(const char *name, void (*entry)(void)) {
+    /* seção crítica: o schedule() do timer percorre esta tabela —
+       não pode nos ver com a entrada preenchida pela metade */
+    uint32_t f = irq_save();
+
     int i;
     for (i = 0; i < MAX_TASKS && tasks[i].used; i++)
         ;
-    if (i == MAX_TASKS) return -1;
+    if (i == MAX_TASKS) { irq_restore(f); return -1; }
 
     uint32_t *stack = kmalloc_a(STACK_SIZE);
-    if (!stack) return -1;
+    if (!stack) { irq_restore(f); return -1; }
     uint32_t *sp = stack + STACK_SIZE / 4;  /* stack cresce para baixo */
 
     /* Stack forjada: montamos exatamente o que o task_switch espera
@@ -54,6 +59,8 @@ int task_create(const char *name, void (*entry)(void)) {
     tasks[i].name = name;
     tasks[i].used = 1;
     ntasks++;
+
+    irq_restore(f);
     return i;
 }
 

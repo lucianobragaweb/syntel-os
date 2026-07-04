@@ -1,4 +1,5 @@
 #include "memory.h"
+#include "sync.h"
 
 /* Heap do kernel: região utilizável acima de 1 MB encontrada no E820.
    Alocador "bump": um ponteiro que só avança. Simples e sem free —
@@ -36,7 +37,10 @@ void memory_init(void) {
 
 uint32_t memory_total(void) { return total_ram; }
 
-void *kmalloc(uint32_t size) {
+/* Miolo sem lock: ler heap_ptr e avançá-lo precisa ser atômico —
+   entre a leitura e a escrita, o timer poderia trocar de tarefa e
+   outra chamada devolveria o MESMO bloco (race condition). */
+static void *alloc_unlocked(uint32_t size) {
     size = (size + 7) & ~7u;  /* alinha em 8 bytes */
     if (heap_ptr + size > heap_end) return 0;
     void *p = (void *)heap_ptr;
@@ -44,11 +48,22 @@ void *kmalloc(uint32_t size) {
     return p;
 }
 
+void *kmalloc(uint32_t size) {
+    uint32_t f = irq_save();
+    void *p = alloc_unlocked(size);
+    irq_restore(f);
+    return p;
+}
+
 /* Alocação alinhada a 4 KB — page tables exigem: a CPU guarda só
-   os 20 bits altos do endereço, os 12 baixos são flags. */
+   os 20 bits altos do endereço, os 12 baixos são flags.
+   O alinhamento e a alocação ficam na MESMA seção crítica. */
 void *kmalloc_a(uint32_t size) {
+    uint32_t f = irq_save();
     heap_ptr = (heap_ptr + 0xFFF) & ~0xFFFu;
-    return kmalloc(size);
+    void *p = alloc_unlocked(size);
+    irq_restore(f);
+    return p;
 }
 
 uint32_t heap_used(void) { return heap_ptr - heap_start; }
