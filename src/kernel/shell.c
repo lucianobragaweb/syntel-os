@@ -3,6 +3,7 @@
 #include "keyboard.h"
 #include "memory.h"
 #include "task.h"
+#include "fs.h"
 
 #define PROMPT_RED 0xFB2C36
 #define TXT_GRAY   0x999999
@@ -46,6 +47,40 @@ static void cmd_help(void) {
     print("  meminfo - mapa de memoria e heap\n");
     print("  pagefault - acessa memoria nao mapeada (teste do paging)\n");
     print("  ps      - lista as tarefas\n");
+    print("  ls      - lista os arquivos do disco\n");
+    print("  cat X   - mostra o conteudo do arquivo X\n");
+}
+
+static void cmd_ls(void) {
+    if (fs_count() == 0) {
+        print_color("nenhum arquivo (filesystem nao montado?)\n", 0xFF5555);
+        return;
+    }
+    print_color("  TAMANHO  NOME\n", TXT_GRAY);
+    for (int i = 0; i < fs_count(); i++) {
+        fs_dirent_t *e = fs_entry(i);
+        print("  ");
+        print_dec(e->size);
+        print("  ");
+        print(e->name);
+        print("\n");
+    }
+}
+
+static void cmd_cat(const char *name) {
+    uint32_t size;
+    if (fs_stat(name, &size) < 0) {
+        print_color("arquivo nao encontrado: ", 0xFF5555);
+        print(name);
+        print("\n");
+        return;
+    }
+    char *buf = kmalloc(size + 1);
+    if (!buf) { print_color("sem memoria\n", 0xFF5555); return; }
+    fs_read(name, buf, size);
+    buf[size] = 0;
+    print(buf);
+    if (size > 0 && buf[size - 1] != '\n') print("\n");
 }
 
 static void cmd_ps(void) {
@@ -99,6 +134,8 @@ static void execute(const char *line) {
     if (str_eq(line, "uptime"))      { cmd_uptime();  return; }
     if (str_eq(line, "meminfo"))     { cmd_meminfo(); return; }
     if (str_eq(line, "ps"))          { cmd_ps();      return; }
+    if (str_eq(line, "ls"))          { cmd_ls();      return; }
+    if ((arg = skip_prefix(line, "cat "))) { cmd_cat(arg); return; }
     if (str_eq(line, "pagefault")) {
         print("escrevendo em 0x20000000 (nao mapeado)...\n");
         *(volatile uint32_t *)0x20000000 = 42;  /* MMU deve barrar */

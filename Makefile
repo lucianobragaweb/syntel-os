@@ -3,7 +3,7 @@ SRC   := src
 
 # Headers compartilhados + headers de cada subsistema
 CFLAGS := -ffreestanding -m32 \
-          -I$(SRC)/include -I$(SRC)/kernel -I$(SRC)/drivers -I$(SRC)/mm
+          -I$(SRC)/include -I$(SRC)/kernel -I$(SRC)/drivers -I$(SRC)/mm -I$(SRC)/fs
 
 all: $(BUILD)
 	nasm -f bin   $(SRC)/boot/boot.asm   -o $(BUILD)/boot.bin
@@ -22,16 +22,20 @@ all: $(BUILD)
 	gcc $(CFLAGS) -c $(SRC)/kernel/irq.c       -o $(BUILD)/irq.o
 	gcc $(CFLAGS) -c $(SRC)/drivers/fb.c       -o $(BUILD)/fb.o
 	gcc $(CFLAGS) -c $(SRC)/drivers/keyboard.c -o $(BUILD)/keyboard.o
+	gcc $(CFLAGS) -c $(SRC)/drivers/ata.c      -o $(BUILD)/ata.o
+	gcc $(CFLAGS) -c $(SRC)/fs/syfs.c          -o $(BUILD)/syfs.o
 	ld -m elf_i386 -T $(SRC)/boot/linker.ld -o $(BUILD)/kernel.elf \
 		$(BUILD)/start.o $(BUILD)/kernel.o $(BUILD)/shell.o \
 		$(BUILD)/task.o $(BUILD)/task_switch.o \
 		$(BUILD)/memory.o $(BUILD)/paging.o $(BUILD)/fb.o $(BUILD)/idt.o \
 		$(BUILD)/isr.o $(BUILD)/isr_stubs.o \
 		$(BUILD)/pic.o $(BUILD)/irq.o $(BUILD)/irq_stubs.o \
-		$(BUILD)/keyboard.o
+		$(BUILD)/keyboard.o $(BUILD)/ata.o $(BUILD)/syfs.o
 	objcopy -O binary $(BUILD)/kernel.elf $(BUILD)/kernel.bin
 	cat $(BUILD)/boot.bin $(BUILD)/kernel.bin > $(BUILD)/os.img
 	truncate -s 1M $(BUILD)/os.img
+	gcc tools/mkfs.c -o $(BUILD)/mkfs
+	$(BUILD)/mkfs $(BUILD)/os.img rootfs/*
 
 $(BUILD):
 	mkdir -p $(BUILD)

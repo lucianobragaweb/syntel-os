@@ -7,6 +7,7 @@
 #include "memory.h"
 #include "paging.h"
 #include "task.h"
+#include "fs.h"
 
 #define SCREEN_W 1024
 #define SCREEN_H 768
@@ -95,7 +96,14 @@ static void ok(const char *msg)
 {
     print_color("[  OK  ]   ", COLOR_GREEN);
     print_color(msg, 0xFFFFFF);
-    print("\n\n");
+    print("\n");
+}
+
+static void fail(const char *msg)
+{
+    print_color("[ FAIL ]   ", COLOR_RED);
+    print_color(msg, 0xFFFFFF);
+    print("\n");
 }
 
 /* Cantoneiras vermelhas nos 4 cantos da tela */
@@ -160,6 +168,11 @@ void kernel_main()
     task_init("shell");
     task_create("contador", counter_task);
     ok("Multitarefa ativa");
+
+    if (fs_init() == 0)
+        ok("Filesystem montado");
+    else
+        fail("Filesystem nao encontrado");
 
     irq_install(0, timer_handler);
     keyboard_init();

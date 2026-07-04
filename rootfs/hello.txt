@@ -1,0 +1,7 @@
+Ola do disco!
+
+Este texto NAO esta embutido no kernel: ele foi gravado na imagem
+de disco pela ferramenta mkfs e lido agora pelo driver ATA, setor
+por setor, atraves do filesystem SyFS.
+
+Boot -> kernel -> driver de bloco -> filesystem -> shell -> voce.

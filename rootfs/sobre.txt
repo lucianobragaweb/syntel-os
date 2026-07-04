@@ -1,0 +1,14 @@
+Syntel OS v0.1.0
+Sistema operacional educacional x86 (32 bits), escrito do zero.
+
+Ja implementado:
+  - bootloader (real mode -> protected mode, GDT)
+  - interrupcoes (IDT, PIC, timer, teclado)
+  - framebuffer grafico 1024x768 (Bochs VBE + PCI)
+  - shell interativo
+  - deteccao de memoria (E820) e alocador kmalloc
+  - paging (memoria virtual, identity map)
+  - multitarefa preemptiva (round-robin no timer)
+  - filesystem read-only (SyFS) sobre driver ATA
+
+2026 - Syntel Solucoes - syntel.net.br
