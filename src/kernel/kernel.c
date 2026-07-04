@@ -4,6 +4,7 @@
 #include "irq.h"
 #include "keyboard.h"
 #include "shell.h"
+#include "memory.h"
 
 #define SCREEN_W 1024
 #define SCREEN_H 768
@@ -111,7 +112,7 @@ void kernel_main()
     fb_art((const char **)logo, (SCREEN_W - LOGO_W_PX) / 2, 88, BRAIN_RED);
 
     /* mensagens de boot abaixo do logo (88 + 384 = 472) */
-    fb_setpos(360, 510);
+    fb_setpos(360, 490);
     fb_setcolor(0xFFFFFF, 0x000000);
 
     idt_init();
@@ -119,6 +120,9 @@ void kernel_main()
 
     pic_init();
     ok("PIC inicializado");
+
+    memory_init();
+    ok("Memoria mapeada");
 
     irq_install(0, timer_handler);
     keyboard_init();

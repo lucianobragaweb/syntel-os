@@ -11,6 +11,26 @@ start:
     mov dh, 30
     call load_kernel
 
+    ; Mapa de memoria E820 → contagem em 0x5000, entradas de 24 bytes em 0x5004
+    ; (so funciona em real mode — o kernel le depois, em protected mode)
+    mov di, 0x5004
+    xor ebx, ebx        ; continuation: 0 = primeira chamada
+    xor bp, bp          ; contador de entradas
+.e820_loop:
+    mov eax, 0xE820
+    mov edx, 0x534D4150 ; assinatura 'SMAP'
+    mov ecx, 24
+    int 0x15
+    jc .e820_done       ; carry = erro ou fim
+    inc bp
+    add di, 24
+    cmp bp, 32          ; limite de seguranca (0x5004 + 32*24 < 0x6000)
+    jae .e820_done
+    test ebx, ebx       ; ebx = 0 → era a ultima entrada
+    jnz .e820_loop
+.e820_done:
+    mov [0x5000], bp
+
     ; Copia a fonte 8x16 do BIOS para 0x6000 (256 chars × 16 bytes = 4096 bytes)
     ; ATENÇÃO: destino não pode alcançar 0x7C00, senão sobrescreve este bootloader
     mov ax, 0x1130

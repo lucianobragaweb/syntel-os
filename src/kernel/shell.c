@@ -1,6 +1,7 @@
 #include "shell.h"
 #include "fb.h"
 #include "keyboard.h"
+#include "memory.h"
 
 #define PROMPT_RED 0xFB2C36
 #define TXT_GRAY   0x999999
@@ -41,6 +42,27 @@ static void cmd_help(void) {
     print("  clear   - limpa a tela\n");
     print("  echo X  - imprime X\n");
     print("  uptime  - tempo desde o boot\n");
+    print("  meminfo - mapa de memoria e heap\n");
+}
+
+static void cmd_meminfo(void) {
+    print_color("regioes reportadas pelo BIOS (E820):\n", TXT_GRAY);
+    for (uint32_t i = 0; i < e820_count(); i++) {
+        e820_entry_t *e = e820_entry(i);
+        print("  ");
+        print_hex((uint32_t)e->base);
+        print(" - ");
+        print_hex((uint32_t)(e->base + e->len));
+        print(e->type == E820_USABLE ? "  RAM\n" : "  reservado\n");
+    }
+    print("total utilizavel: ");
+    print_dec(memory_total() / (1024 * 1024));
+    print(" MB\n");
+    print("heap do kernel:   ");
+    print_dec(heap_used());
+    print(" / ");
+    print_dec(heap_size() / (1024 * 1024));
+    print(" MB usados\n");
 }
 
 static void cmd_uptime(void) {
@@ -56,8 +78,9 @@ static void execute(const char *line) {
     const char *arg;
 
     if (line[0] == 0)                return;
-    if (str_eq(line, "help"))        { cmd_help();   return; }
-    if (str_eq(line, "uptime"))      { cmd_uptime(); return; }
+    if (str_eq(line, "help"))        { cmd_help();    return; }
+    if (str_eq(line, "uptime"))      { cmd_uptime();  return; }
+    if (str_eq(line, "meminfo"))     { cmd_meminfo(); return; }
     if (str_eq(line, "clear")) {
         clear_screen();
         fb_setpos(8, 8);   /* console ocupa a tela toda a partir daqui */
@@ -98,10 +121,23 @@ static void read_line(char *buf) {
 }
 
 void shell_run(void) {
+    int first = 1;
     for (;;) {
         char line[LINE_MAX];
         print_color("> ", PROMPT_RED);
         read_line(line);
+
+        /* primeiro comando: sai da splash para um console limpo,
+           repetindo a linha digitada no topo para manter o contexto */
+        if (first && line[0]) {
+            first = 0;
+            clear_screen();
+            fb_setpos(8, 8);
+            print_color("> ", PROMPT_RED);
+            print(line);
+            print("\n");
+        }
+
         execute(line);
     }
 }
