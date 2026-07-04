@@ -10,8 +10,10 @@ all: $(BUILD)
 	nasm -f elf32 $(SRC)/boot/start.asm  -o $(BUILD)/start.o
 	nasm -f elf32 $(SRC)/kernel/isr.asm  -o $(BUILD)/isr_stubs.o
 	nasm -f elf32 $(SRC)/kernel/irq.asm  -o $(BUILD)/irq_stubs.o
+	nasm -f elf32 $(SRC)/kernel/task.asm -o $(BUILD)/task_switch.o
 	gcc $(CFLAGS) -c $(SRC)/kernel/kernel.c    -o $(BUILD)/kernel.o
 	gcc $(CFLAGS) -c $(SRC)/kernel/shell.c     -o $(BUILD)/shell.o
+	gcc $(CFLAGS) -c $(SRC)/kernel/task.c      -o $(BUILD)/task.o
 	gcc $(CFLAGS) -c $(SRC)/mm/memory.c        -o $(BUILD)/memory.o
 	gcc $(CFLAGS) -c $(SRC)/mm/paging.c        -o $(BUILD)/paging.o
 	gcc $(CFLAGS) -c $(SRC)/kernel/idt.c       -o $(BUILD)/idt.o
@@ -22,6 +24,7 @@ all: $(BUILD)
 	gcc $(CFLAGS) -c $(SRC)/drivers/keyboard.c -o $(BUILD)/keyboard.o
 	ld -m elf_i386 -T $(SRC)/boot/linker.ld -o $(BUILD)/kernel.elf \
 		$(BUILD)/start.o $(BUILD)/kernel.o $(BUILD)/shell.o \
+		$(BUILD)/task.o $(BUILD)/task_switch.o \
 		$(BUILD)/memory.o $(BUILD)/paging.o $(BUILD)/fb.o $(BUILD)/idt.o \
 		$(BUILD)/isr.o $(BUILD)/isr_stubs.o \
 		$(BUILD)/pic.o $(BUILD)/irq.o $(BUILD)/irq_stubs.o \

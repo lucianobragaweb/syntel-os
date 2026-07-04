@@ -2,6 +2,7 @@
 #include "fb.h"
 #include "keyboard.h"
 #include "memory.h"
+#include "task.h"
 
 #define PROMPT_RED 0xFB2C36
 #define TXT_GRAY   0x999999
@@ -44,6 +45,21 @@ static void cmd_help(void) {
     print("  uptime  - tempo desde o boot\n");
     print("  meminfo - mapa de memoria e heap\n");
     print("  pagefault - acessa memoria nao mapeada (teste do paging)\n");
+    print("  ps      - lista as tarefas\n");
+}
+
+static void cmd_ps(void) {
+    print_color("  ID  NOME\n", TXT_GRAY);
+    for (int i = 0; i < MAX_TASKS; i++) {
+        const char *name = task_name(i);
+        if (!name) continue;
+        print("  ");
+        print_dec((uint32_t)i);
+        print("   ");
+        print(name);
+        if (i == task_current()) print_color("   <- executando agora", 0x77DD77);
+        print("\n");
+    }
 }
 
 static void cmd_meminfo(void) {
@@ -82,6 +98,7 @@ static void execute(const char *line) {
     if (str_eq(line, "help"))        { cmd_help();    return; }
     if (str_eq(line, "uptime"))      { cmd_uptime();  return; }
     if (str_eq(line, "meminfo"))     { cmd_meminfo(); return; }
+    if (str_eq(line, "ps"))          { cmd_ps();      return; }
     if (str_eq(line, "pagefault")) {
         print("escrevendo em 0x20000000 (nao mapeado)...\n");
         *(volatile uint32_t *)0x20000000 = 42;  /* MMU deve barrar */

@@ -6,6 +6,7 @@
 #include "shell.h"
 #include "memory.h"
 #include "paging.h"
+#include "task.h"
 
 #define SCREEN_W 1024
 #define SCREEN_H 768
@@ -21,16 +22,41 @@ static void timer_handler(registers_t *regs)
 {
     (void)regs;
     ticks++;
-    if (ticks % 27 != 0 || !boot_done)
-        return;
-    char c = ((ticks / 27) % 2) ? '_' : ' ';
-    fb_char_at(fb_getx(), fb_gety(), c, BRAIN_RED, 0x000000, 1);
+    if (ticks % 27 == 0 && boot_done) {
+        char c = ((ticks / 27) % 2) ? '_' : ' ';
+        fb_char_at(fb_getx(), fb_gety(), c, BRAIN_RED, 0x000000, 1);
+    }
+    /* fim do tick = fim do quantum: passa a CPU para a próxima tarefa */
+    schedule();
 }
 
 /* usado pelo shell (comando uptime) */
 int get_ticks(void)
 {
     return ticks;
+}
+
+/* Tarefa de demonstração: incrementa um contador e o desenha no canto
+   superior direito. Roda "ao mesmo tempo" que o shell — o timer alterna
+   entre as duas a cada tick. Usa fb_char_at com posição fixa para não
+   disputar o cursor de texto com o shell. */
+static void counter_task(void)
+{
+    uint32_t n = 0;
+    for (;;) {
+        char buf[9];
+        buf[8] = 0;
+        uint32_t v = n;
+        for (int i = 7; i >= 0; i--) {
+            buf[i] = '0' + v % 10;
+            v /= 10;
+        }
+        for (int i = 0; i < 8; i++)
+            fb_char_at(904 + i * 8, 8, buf[i], COLOR_GREEN, 0x000000, 1);
+        n++;
+        for (volatile uint32_t d = 0; d < 500000; d++)
+            ;  /* simula trabalho */
+    }
 }
 
 /* brain-ascii.txt — cérebro + circuito, 44 chars × 24 linhas */
@@ -113,7 +139,7 @@ void kernel_main()
     fb_art((const char **)logo, (SCREEN_W - LOGO_W_PX) / 2, 88, BRAIN_RED);
 
     /* mensagens de boot abaixo do logo (88 + 384 = 472) */
-    fb_setpos(360, 474);
+    fb_setpos(360, 480);
     fb_setcolor(0xFFFFFF, 0x000000);
 
     idt_init();
@@ -128,16 +154,23 @@ void kernel_main()
     paging_init();
     ok("Paging ativo");
 
+    /* multitarefa: registra o fluxo atual como tarefa 0 e cria a demo.
+       Tudo ANTES do sti — criar tarefas com o scheduler já ativo seria
+       uma corrida contra o timer. */
+    task_init("shell");
+    task_create("contador", counter_task);
+    ok("Multitarefa ativa");
+
     irq_install(0, timer_handler);
     keyboard_init();
     __asm__ volatile("sti");
     ok("Interrupcoes ativas");
 
     /* separador */
-    fb_rect(360, 626, 340, 1, DARK_RED);
+    fb_rect(360, 664, 340, 1, DARK_RED);
 
     /* prompt */
-    fb_setpos(360, 644);
+    fb_setpos(360, 676);
     print_color("> ", BRAIN_RED);
     print_color("sistema pronto. ", TXT_GRAY);
 
@@ -149,7 +182,7 @@ void kernel_main()
     print_color("syntel.net.br", DARK_RED);
 
     /* shell assume a partir da linha abaixo do prompt */
-    fb_setpos(360, 676);
+    fb_setpos(360, 700);
     fb_setcolor(0xFFFFFF, 0x000000);
     boot_done = 1;
 
