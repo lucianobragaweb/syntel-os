@@ -4,21 +4,70 @@
 
 # brain-os
 
-SO bare-metal x86 minimalista, escrito do zero para fins educacionais.
+Sistema operacional bare-metal x86 (32-bit), escrito do zero para fins educacionais. Vai do `BIOS carrega 512 bytes` até um programa de usuário isolado rodando do disco em ring 3 — passando por interrupções, memória virtual, multitarefa e filesystem.
+
+## O que já existe
+
+- **Boot** — bootloader 16-bit, GDT, transição real mode → protected mode 32-bit
+- **Vídeo** — framebuffer gráfico 1024×768×32bpp (Bochs VBE + descoberta do endereço via PCI), fonte 8×16 do BIOS
+- **Interrupções** — IDT, PIC remapeado, exceções, timer (PIT) e teclado
+- **Shell interativo** — leitura de linha, histórico de tela com scroll
+- **Memória** — detecção da RAM via mapa E820, alocador `kmalloc`/`kfree` (first-fit com lista de livres)
+- **Memória virtual** — paging com identity map, page faults com diagnóstico
+- **Multitarefa** — troca de contexto e scheduler round-robin preemptivo no timer
+- **Sincronização** — seções críticas (`irq_save`/`irq_restore`)
+- **Estados de tarefa** — pronta/dormindo, `task_sleep`
+- **Filesystem** — SyFS (read-only) sobre driver de disco ATA PIO
+- **User mode** — ring 3, syscalls via `int 0x80`, `exec` de programa carregado do disco
+
+### Comandos do shell
+
+```
+help       lista os comandos
+clear      limpa a tela
+echo X     imprime X
+uptime     tempo desde o boot
+meminfo    mapa de memoria (E820) e uso do heap
+ps         lista as tarefas e seus estados
+ls         lista os arquivos do disco
+cat X      mostra o conteudo do arquivo X
+exec X     carrega e executa o programa X em ring 3
+pagefault  acessa memoria nao mapeada (demonstra a protecao do paging)
+```
 
 ## Estrutura
 
+Organizada por subsistema, na filosofia do kernel Linux:
+
 ```
-boot.asm      — bootloader 16-bit (carrega o kernel, entra em protected mode)
-kernel.c      — entrada do kernel (32-bit)
-screen.c      — driver VGA text mode (escreve em 0xb8000)
-linker.ld     — script de linkagem (endereço base 0x1000)
-Makefile      — build e execução local
-Dockerfile    — ambiente de build + QEMU + noVNC
-entrypoint.sh — hot reload dentro do container
+src/
+├── boot/       boot.asm (real→protected mode, VBE, E820), start.asm, linker.ld
+├── kernel/     kernel.c, idt, isr, irq, pic, gdt (ring0/3 + TSS),
+│               task (multitarefa), syscall, shell
+├── drivers/    fb (framebuffer), keyboard (buffer circular), ata (disco PIO)
+├── mm/         memory (E820, kmalloc/kfree), paging (identity map + ring 3)
+├── fs/         syfs (filesystem read-only)
+├── include/    types.h, io.h (port I/O), sync.h (secoes criticas)
+└── user/       init.c (programa ring 3), user.ld (base 0x400000)
+
+rootfs/         arquivos gravados no disco (via tools/mkfs.c)
+tools/mkfs.c    formata a imagem com o filesystem SyFS (roda no host)
 ```
 
-## Pré-requisitos (local)
+## Mapa de memória
+
+```
+0x06000    fonte 8x16 do BIOS
+0x07C00    bootloader
+0x08000    mapa de memoria E820
+0x10000    kernel (carregado do disco)
+0x90000    topo da stack do kernel (cresce para baixo)
+0x100000   heap do kernel (kmalloc)
+0x400000   programas de usuario (ring 3)
+0xFD000000 framebuffer (linear, via PCI)
+```
+
+## Pré-requisitos (build local)
 
 - `nasm`
 - `gcc` com suporte a `-m32` (`gcc-multilib`)
@@ -28,12 +77,12 @@ entrypoint.sh — hot reload dentro do container
 
 ## Rodando localmente
 
-**Build:**
+**Build** (compila kernel, programa de usuário e grava o filesystem na imagem):
 ```bash
 make all
 ```
 
-**Executar no QEMU** (terminal, modo curses):
+**Executar no QEMU:**
 ```bash
 make run
 ```
@@ -45,24 +94,26 @@ make clean
 
 ## Rodando com Docker (recomendado)
 
-Não requer nenhuma dependência instalada além de Docker.
+Não requer nenhuma dependência além do Docker.
 
 ```bash
 docker compose up
 ```
 
-Abra `http://localhost:6080/vnc.html` no browser e clique em **Connect**.
-
-O OS vai aparecer rodando no QEMU direto no browser.
+Abra `http://localhost:6080/vnc.html` no browser e clique em **Connect** — o OS aparece rodando no QEMU direto no navegador.
 
 ### Hot reload
 
-Com o container rodando, qualquer alteração salva em `.c`, `.asm` ou `.ld` dispara rebuild automático e reinicia o QEMU. Sem precisar rodar nenhum comando.
+Com o container rodando, qualquer alteração salva em `src/` ou no `Makefile` dispara rebuild automático e reinicia o QEMU, sem precisar rodar nenhum comando.
 
-## Como funciona
+## Como funciona o boot
 
-1. O BIOS carrega o bootloader (`boot.asm`) no endereço `0x7c00`
-2. O bootloader imprime uma mensagem via BIOS, lê o kernel do disco e configura a GDT
-3. O processador entra em **protected mode 32-bit**
-4. O kernel (`kernel_main`) é executado a partir do endereço `0x1000`
-5. O driver VGA escreve diretamente na memória de vídeo (`0xb8000`)
+1. O BIOS carrega o bootloader (`boot.asm`) em `0x7C00`
+2. O bootloader lê o kernel do disco para `0x10000`, copia a fonte do BIOS, configura o modo gráfico (Bochs VBE) e lê o mapa de memória (E820)
+3. Monta a GDT e o processador entra em **protected mode 32-bit**
+4. O controle salta para o kernel, que inicializa cada subsistema (GDT/TSS, IDT, PIC, memória, paging, multitarefa, filesystem) e entrega o controle ao shell
+5. O shell roda como tarefa, lendo comandos do teclado — inclusive `exec`, que carrega um programa do disco e o executa isolado em ring 3
+
+## Objetivo
+
+Projeto de aprendizado: cada subsistema foi construído para entender o conceito por dentro, priorizando clareza sobre completude. Não é (nem tenta ser) compatível com programas do mundo real — é um mapa navegável de como um SO funciona, dos primeiros 512 bytes até a execução de um processo isolado.
