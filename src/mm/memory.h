@@ -11,8 +11,8 @@ typedef struct {
     uint32_t acpi;
 } __attribute__((packed)) e820_entry_t;
 
-#define E820_COUNT   ((volatile uint32_t*)0x5000)
-#define E820_ENTRIES ((e820_entry_t*)0x5004)
+#define E820_COUNT   ((volatile uint32_t*)0x8000)
+#define E820_ENTRIES ((e820_entry_t*)0x8004)
 #define E820_USABLE  1
 
 /* Lê o mapa E820 e inicializa o heap do kernel (acima de 1 MB) */
@@ -23,6 +23,9 @@ uint32_t memory_total(void);
 
 /* Aloca `size` bytes do heap (bump allocator — não há free ainda) */
 void *kmalloc(uint32_t size);
+
+/* Igual ao kmalloc, mas alinhado a 4 KB (para page tables) */
+void *kmalloc_a(uint32_t size);
 
 /* Estatísticas do heap para o meminfo */
 uint32_t heap_used(void);

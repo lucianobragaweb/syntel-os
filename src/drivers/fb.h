@@ -24,6 +24,7 @@ void fb_print_centered(const char *s, int y, int scale, uint32_t fg);
 void fb_setpos(int x, int y);
 int  fb_getx(void);
 int  fb_gety(void);
+uint32_t fb_get_base(void);  /* endereco fisico do framebuffer */
 void fb_setcolor(uint32_t fg, uint32_t bg);
 /* Renderiza array de strings em modo compacto 8x8px por char */
 void fb_art(const char **lines, int x0, int y0, uint32_t fg);

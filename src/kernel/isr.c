@@ -47,5 +47,16 @@ void isr_handler(registers_t *regs) {
     print_hex(regs->eip);
     print("\n");
 
+    /* Page fault (#14): CR2 guarda o endereço que causou a falha */
+    if (regs->int_no == 14) {
+        uint32_t cr2;
+        __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
+        print("Endereco que falhou (CR2): ");
+        print_hex(cr2);
+        print("\n");
+        print(regs->err_code & 0x1 ? "Causa: violacao de protecao\n"
+                                   : "Causa: pagina nao mapeada\n");
+    }
+
     for (;;);
 }

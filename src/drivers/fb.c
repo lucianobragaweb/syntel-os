@@ -101,6 +101,7 @@ static int margin_x = 0;
 void fb_setpos(int x, int y)              { cur_x = x; cur_y = y; margin_x = x; }
 int  fb_getx(void)                        { return cur_x; }
 int  fb_gety(void)                        { return cur_y; }
+uint32_t fb_get_base(void)                { return fb_base; }
 void fb_setcolor(uint32_t fg, uint32_t bg) { color_fg = fg; color_bg = bg; }
 
 /* Renderiza array de strings com fonte 8x16.

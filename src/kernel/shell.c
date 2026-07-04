@@ -43,6 +43,7 @@ static void cmd_help(void) {
     print("  echo X  - imprime X\n");
     print("  uptime  - tempo desde o boot\n");
     print("  meminfo - mapa de memoria e heap\n");
+    print("  pagefault - acessa memoria nao mapeada (teste do paging)\n");
 }
 
 static void cmd_meminfo(void) {
@@ -81,6 +82,12 @@ static void execute(const char *line) {
     if (str_eq(line, "help"))        { cmd_help();    return; }
     if (str_eq(line, "uptime"))      { cmd_uptime();  return; }
     if (str_eq(line, "meminfo"))     { cmd_meminfo(); return; }
+    if (str_eq(line, "pagefault")) {
+        print("escrevendo em 0x20000000 (nao mapeado)...\n");
+        *(volatile uint32_t *)0x20000000 = 42;  /* MMU deve barrar */
+        print("se voce le isso, o paging NAO esta funcionando!\n");
+        return;
+    }
     if (str_eq(line, "clear")) {
         clear_screen();
         fb_setpos(8, 8);   /* console ocupa a tela toda a partir daqui */

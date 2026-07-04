@@ -5,6 +5,7 @@
 #include "keyboard.h"
 #include "shell.h"
 #include "memory.h"
+#include "paging.h"
 
 #define SCREEN_W 1024
 #define SCREEN_H 768
@@ -112,7 +113,7 @@ void kernel_main()
     fb_art((const char **)logo, (SCREEN_W - LOGO_W_PX) / 2, 88, BRAIN_RED);
 
     /* mensagens de boot abaixo do logo (88 + 384 = 472) */
-    fb_setpos(360, 490);
+    fb_setpos(360, 474);
     fb_setcolor(0xFFFFFF, 0x000000);
 
     idt_init();
@@ -124,13 +125,16 @@ void kernel_main()
     memory_init();
     ok("Memoria mapeada");
 
+    paging_init();
+    ok("Paging ativo");
+
     irq_install(0, timer_handler);
     keyboard_init();
     __asm__ volatile("sti");
     ok("Interrupcoes ativas");
 
     /* separador */
-    fb_rect(360, 618, 340, 1, DARK_RED);
+    fb_rect(360, 626, 340, 1, DARK_RED);
 
     /* prompt */
     fb_setpos(360, 644);

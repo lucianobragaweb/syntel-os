@@ -44,6 +44,13 @@ void *kmalloc(uint32_t size) {
     return p;
 }
 
+/* Alocação alinhada a 4 KB — page tables exigem: a CPU guarda só
+   os 20 bits altos do endereço, os 12 baixos são flags. */
+void *kmalloc_a(uint32_t size) {
+    heap_ptr = (heap_ptr + 0xFFF) & ~0xFFFu;
+    return kmalloc(size);
+}
+
 uint32_t heap_used(void) { return heap_ptr - heap_start; }
 uint32_t heap_size(void) { return heap_end - heap_start; }
 
