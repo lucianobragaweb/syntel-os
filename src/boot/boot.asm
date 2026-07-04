@@ -6,10 +6,15 @@ start:
     mov ds, ax
     mov es, ax
 
-    ; Carrega kernel — 30 setores = 15 KB em 0x1000..0x4C00
-    mov bx, 0x1000
-    mov dh, 30
+    ; Carrega kernel em 0x10000 (64 KB) — via segmento ES = 0x1000
+    ; 62 setores = 31 KB (máximo em uma chamada sem cruzar trilha do disco)
+    mov ax, 0x1000
+    mov es, ax          ; ES:BX = 0x1000:0x0000 → físico 0x10000
+    xor bx, bx
+    mov dh, 62
     call load_kernel
+    xor ax, ax
+    mov es, ax          ; restaura ES para o resto do boot
 
     ; Mapa de memoria E820 → contagem em 0x8000, entradas de 24 bytes em 0x8004
     ; (0x8000 fica acima do bootloader 0x7C00-0x7DFF; nao usar 0x5000 —
@@ -102,7 +107,7 @@ init_pm:
     mov gs, ax
     mov ebp, 0x90000
     mov esp, ebp
-    jmp 0x1000
+    jmp 0x10000
 
 [bits 16]
 load_kernel:
