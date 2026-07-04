@@ -21,10 +21,13 @@ void memory_init(void);
 /* Total de RAM utilizável em bytes */
 uint32_t memory_total(void);
 
-/* Aloca `size` bytes do heap (bump allocator — não há free ainda) */
+/* Aloca `size` bytes do heap (first-fit com lista de livres) */
 void *kmalloc(uint32_t size);
 
-/* Igual ao kmalloc, mas alinhado a 4 KB (para page tables) */
+/* Libera um bloco obtido por kmalloc (volta para a lista de livres) */
+void kfree(void *ptr);
+
+/* Igual ao kmalloc, mas alinhado a 4 KB (para page tables). Sem free. */
 void *kmalloc_a(uint32_t size);
 
 /* Estatísticas do heap para o meminfo */

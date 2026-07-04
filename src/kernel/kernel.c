@@ -8,6 +8,8 @@
 #include "paging.h"
 #include "task.h"
 #include "fs.h"
+#include "gdt.h"
+#include "syscall.h"
 
 #define SCREEN_W 1024
 #define SCREEN_H 768
@@ -55,8 +57,7 @@ static void counter_task(void)
         for (int i = 0; i < 8; i++)
             fb_char_at(904 + i * 8, 8, buf[i], COLOR_GREEN, 0x000000, 1);
         n++;
-        for (volatile uint32_t d = 0; d < 500000; d++)
-            ;  /* simula trabalho */
+        task_sleep(100);  /* dorme 100ms: cede a CPU em vez de queimá-la */
     }
 }
 
@@ -150,8 +151,12 @@ void kernel_main()
     fb_setpos(360, 480);
     fb_setcolor(0xFFFFFF, 0x000000);
 
+    gdt_init();
+    ok("GDT e TSS carregados");
+
     idt_init();
-    ok("IDT carregada");
+    syscall_init();
+    ok("IDT e syscalls prontos");
 
     pic_init();
     ok("PIC inicializado");

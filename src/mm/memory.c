@@ -37,11 +37,21 @@ void memory_init(void) {
 
 uint32_t memory_total(void) { return total_ram; }
 
-/* Miolo sem lock: ler heap_ptr e avançá-lo precisa ser atômico —
-   entre a leitura e a escrita, o timer poderia trocar de tarefa e
-   outra chamada devolveria o MESMO bloco (race condition). */
-static void *alloc_unlocked(uint32_t size) {
-    size = (size + 7) & ~7u;  /* alinha em 8 bytes */
+/* Cada bloco carrega um cabeçalho com seu tamanho. Quando livre, o
+   campo `next` encadeia numa lista de livres; quando em uso, é lixo.
+   É assim que um alocador sabe, no kfree(ptr), quanto liberar: o
+   tamanho está logo antes do ponteiro que devolvemos. */
+typedef struct block {
+    uint32_t      size;  /* bytes úteis (depois do cabeçalho) */
+    struct block *next;  /* próximo livre (só válido se livre) */
+} block_t;
+
+#define HDR sizeof(block_t)
+
+static block_t *free_list = 0;
+
+/* Empurra o ponteiro do heap (bump). Base de tudo: só cresce. */
+static void *bump(uint32_t size) {
     if (heap_ptr + size > heap_end) return 0;
     void *p = (void *)heap_ptr;
     heap_ptr += size;
@@ -49,19 +59,43 @@ static void *alloc_unlocked(uint32_t size) {
 }
 
 void *kmalloc(uint32_t size) {
+    size = (size + 7) & ~7u;  /* alinha em 8 bytes */
     uint32_t f = irq_save();
-    void *p = alloc_unlocked(size);
+
+    /* first-fit: reaproveita o primeiro bloco livre que couber */
+    block_t **prev = &free_list;
+    for (block_t *b = free_list; b; prev = &b->next, b = b->next) {
+        if (b->size >= size) {
+            *prev = b->next;           /* desencadeia da lista de livres */
+            irq_restore(f);
+            return (void *)((uint8_t *)b + HDR);
+        }
+    }
+
+    /* nenhum bloco livre serve: pega memória nova do heap */
+    block_t *b = bump(HDR + size);
+    if (!b) { irq_restore(f); return 0; }
+    b->size = size;
     irq_restore(f);
-    return p;
+    return (void *)((uint8_t *)b + HDR);
+}
+
+void kfree(void *ptr) {
+    if (!ptr) return;
+    block_t *b = (block_t *)((uint8_t *)ptr - HDR);
+    uint32_t f = irq_save();
+    b->next   = free_list;   /* devolve para a lista de livres */
+    free_list = b;
+    irq_restore(f);
 }
 
 /* Alocação alinhada a 4 KB — page tables exigem: a CPU guarda só
-   os 20 bits altos do endereço, os 12 baixos são flags.
-   O alinhamento e a alocação ficam na MESMA seção crítica. */
+   os 20 bits altos do endereço, os 12 baixos são flags. Não usa
+   cabeçalho: page tables nunca são liberadas. */
 void *kmalloc_a(uint32_t size) {
     uint32_t f = irq_save();
     heap_ptr = (heap_ptr + 0xFFF) & ~0xFFFu;
-    void *p = alloc_unlocked(size);
+    void *p = bump(size);
     irq_restore(f);
     return p;
 }

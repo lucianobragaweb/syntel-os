@@ -36,6 +36,16 @@ static void idt_set_gate(uint8_t n, uint32_t handler) {
     idt[n].offset_high = (handler >> 16) & 0xFFFF;
 }
 
+/* Gate com DPL escolhido. DPL=3 permite que o ring 3 dispare a
+   interrupção (necessário para o int 0x80 dos syscalls). */
+void idt_set_gate_dpl(uint8_t n, uint32_t handler, uint8_t dpl) {
+    idt[n].offset_low  = handler & 0xFFFF;
+    idt[n].selector    = KERNEL_CS;
+    idt[n].zero        = 0;
+    idt[n].type_attr   = 0x8E | (dpl << 5);
+    idt[n].offset_high = (handler >> 16) & 0xFFFF;
+}
+
 void idt_init() {
     idt_ptr.limit = sizeof(idt) - 1;
     idt_ptr.base  = (uint32_t) &idt;

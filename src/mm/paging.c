@@ -5,6 +5,7 @@
 /* Flags das entradas de Page Directory e Page Table */
 #define PAGE_PRESENT 0x1  /* página existe (sem isso → page fault)     */
 #define PAGE_RW      0x2  /* escrita permitida (sem isso → só leitura) */
+#define PAGE_USER    0x4  /* acessível em ring 3 (sem isso → só kernel)*/
 
 /* Page Directory: 1024 entradas, cada uma cobrindo 4 MB.
    Cada entrada aponta para uma Page Table de 1024 páginas de 4 KB. */
@@ -32,6 +33,22 @@ static void map_page(uint32_t addr) {
 void paging_map_range(uint32_t start, uint32_t end) {
     for (uint32_t a = start & ~0xFFFu; a < end; a += 4096)
         map_page(a);
+}
+
+/* Marca [start, end) como acessível em ring 3. Tanto a Page Table
+   quanto a entrada do Page Directory precisam da flag USER — a CPU
+   checa os DOIS níveis ao traduzir um acesso de ring 3. */
+void paging_set_user(uint32_t start, uint32_t end) {
+    for (uint32_t a = start & ~0xFFFu; a < end; a += 4096) {
+        uint32_t pd_i = a >> 22;
+        uint32_t pt_i = (a >> 12) & 0x3FF;
+        if (!(page_dir[pd_i] & PAGE_PRESENT)) continue;
+        page_dir[pd_i] |= PAGE_USER;
+        uint32_t *pt = (uint32_t *)(page_dir[pd_i] & ~0xFFFu);
+        pt[pt_i] |= PAGE_USER;
+    }
+    /* recarrega CR3 para invalidar a TLB (traduções em cache) */
+    __asm__ volatile("mov %%cr3, %%eax; mov %%eax, %%cr3" ::: "eax");
 }
 
 void paging_init(void) {

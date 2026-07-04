@@ -4,6 +4,8 @@
 #include "memory.h"
 #include "task.h"
 #include "fs.h"
+#include "syscall.h"
+#include "paging.h"
 
 #define PROMPT_RED 0xFB2C36
 #define TXT_GRAY   0x999999
@@ -13,6 +15,8 @@
 int get_ticks(void);
 
 /* ---- helpers de string (ambiente freestanding: sem libc) ---- */
+
+static int slen(const char *s) { int n = 0; while (s[n]) n++; return n; }
 
 static int str_eq(const char *a, const char *b) {
     while (*a && *a == *b) { a++; b++; }
@@ -49,6 +53,26 @@ static void cmd_help(void) {
     print("  ps      - lista as tarefas\n");
     print("  ls      - lista os arquivos do disco\n");
     print("  cat X   - mostra o conteudo do arquivo X\n");
+    print("  exec X  - carrega e executa o programa X em ring 3\n");
+}
+
+#define USER_BASE  0x400000
+#define USER_STACK 0x500000  /* topo da stack do usuario */
+
+static void cmd_exec(const char *name) {
+    uint32_t size;
+    if (fs_stat(name, &size) < 0) {
+        print_color("programa nao encontrado: ", 0xFF5555);
+        print(name); print("\n");
+        return;
+    }
+    /* carrega o binario do disco para a base do usuario */
+    fs_read(name, (void *)USER_BASE, size);
+    /* libera a regiao [4MB, 5MB) para ring 3 (codigo + stack) */
+    paging_set_user(USER_BASE, USER_STACK);
+    /* salta para ring 3; volta aqui quando o programa faz sys_exit */
+    exec_user(USER_BASE, USER_STACK);
+    print_color("[ processo encerrado ]\n", TXT_GRAY);
 }
 
 static void cmd_ls(void) {
@@ -81,16 +105,20 @@ static void cmd_cat(const char *name) {
     buf[size] = 0;
     print(buf);
     if (size > 0 && buf[size - 1] != '\n') print("\n");
+    kfree(buf);  /* devolve para a lista de livres */
 }
 
 static void cmd_ps(void) {
-    print_color("  ID  NOME\n", TXT_GRAY);
+    print_color("  ID  ESTADO     NOME\n", TXT_GRAY);
     for (int i = 0; i < MAX_TASKS; i++) {
         const char *name = task_name(i);
         if (!name) continue;
         print("  ");
         print_dec((uint32_t)i);
         print("   ");
+        const char *st = task_state_name(i);
+        print(st);
+        for (int k = slen(st); k < 11; k++) print(" ");
         print(name);
         if (i == task_current()) print_color("   <- executando agora", 0x77DD77);
         print("\n");
@@ -135,7 +163,8 @@ static void execute(const char *line) {
     if (str_eq(line, "meminfo"))     { cmd_meminfo(); return; }
     if (str_eq(line, "ps"))          { cmd_ps();      return; }
     if (str_eq(line, "ls"))          { cmd_ls();      return; }
-    if ((arg = skip_prefix(line, "cat "))) { cmd_cat(arg); return; }
+    if ((arg = skip_prefix(line, "cat ")))  { cmd_cat(arg);  return; }
+    if ((arg = skip_prefix(line, "exec "))) { cmd_exec(arg); return; }
     if (str_eq(line, "pagefault")) {
         print("escrevendo em 0x20000000 (nao mapeado)...\n");
         *(volatile uint32_t *)0x20000000 = 42;  /* MMU deve barrar */

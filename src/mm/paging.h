@@ -10,4 +10,7 @@ void paging_init(void);
 /* Mapeia identity (virtual = físico) o intervalo [start, end) */
 void paging_map_range(uint32_t start, uint32_t end);
 
+/* Marca [start, end) como acessível em ring 3 (flag USER) */
+void paging_set_user(uint32_t start, uint32_t end);
+
 #endif

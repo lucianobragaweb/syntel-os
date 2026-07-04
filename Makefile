@@ -11,9 +11,13 @@ all: $(BUILD)
 	nasm -f elf32 $(SRC)/kernel/isr.asm  -o $(BUILD)/isr_stubs.o
 	nasm -f elf32 $(SRC)/kernel/irq.asm  -o $(BUILD)/irq_stubs.o
 	nasm -f elf32 $(SRC)/kernel/task.asm -o $(BUILD)/task_switch.o
+	nasm -f elf32 $(SRC)/kernel/gdt.asm  -o $(BUILD)/gdt_flush.o
+	nasm -f elf32 $(SRC)/kernel/syscall.asm -o $(BUILD)/syscall_stub.o
 	gcc $(CFLAGS) -c $(SRC)/kernel/kernel.c    -o $(BUILD)/kernel.o
 	gcc $(CFLAGS) -c $(SRC)/kernel/shell.c     -o $(BUILD)/shell.o
 	gcc $(CFLAGS) -c $(SRC)/kernel/task.c      -o $(BUILD)/task.o
+	gcc $(CFLAGS) -c $(SRC)/kernel/gdt.c       -o $(BUILD)/gdt.o
+	gcc $(CFLAGS) -c $(SRC)/kernel/syscall.c   -o $(BUILD)/syscall.o
 	gcc $(CFLAGS) -c $(SRC)/mm/memory.c        -o $(BUILD)/memory.o
 	gcc $(CFLAGS) -c $(SRC)/mm/paging.c        -o $(BUILD)/paging.o
 	gcc $(CFLAGS) -c $(SRC)/kernel/idt.c       -o $(BUILD)/idt.o
@@ -27,6 +31,8 @@ all: $(BUILD)
 	ld -m elf_i386 -T $(SRC)/boot/linker.ld -o $(BUILD)/kernel.elf \
 		$(BUILD)/start.o $(BUILD)/kernel.o $(BUILD)/shell.o \
 		$(BUILD)/task.o $(BUILD)/task_switch.o \
+		$(BUILD)/gdt.o $(BUILD)/gdt_flush.o \
+		$(BUILD)/syscall.o $(BUILD)/syscall_stub.o \
 		$(BUILD)/memory.o $(BUILD)/paging.o $(BUILD)/fb.o $(BUILD)/idt.o \
 		$(BUILD)/isr.o $(BUILD)/isr_stubs.o \
 		$(BUILD)/pic.o $(BUILD)/irq.o $(BUILD)/irq_stubs.o \
@@ -34,8 +40,12 @@ all: $(BUILD)
 	objcopy -O binary $(BUILD)/kernel.elf $(BUILD)/kernel.bin
 	cat $(BUILD)/boot.bin $(BUILD)/kernel.bin > $(BUILD)/os.img
 	truncate -s 1M $(BUILD)/os.img
+	# programa de usuário: compilado e linkado SEPARADO do kernel (base 0x400000)
+	gcc $(CFLAGS) -fno-pic -c $(SRC)/user/init.c -o $(BUILD)/init.o
+	ld -m elf_i386 -T $(SRC)/user/user.ld -o $(BUILD)/init.elf $(BUILD)/init.o
+	objcopy -O binary $(BUILD)/init.elf $(BUILD)/init
 	gcc tools/mkfs.c -o $(BUILD)/mkfs
-	$(BUILD)/mkfs $(BUILD)/os.img rootfs/*
+	$(BUILD)/mkfs $(BUILD)/os.img rootfs/* $(BUILD)/init
 
 $(BUILD):
 	mkdir -p $(BUILD)
