@@ -1,4 +1,4 @@
-/* init — primeiro programa de usuário do syntel-os.
+/* init — primeiro programa de usuário do brain-os.
    Compilado e linkado SEPARADO do kernel (base 0x400000), roda em ring 3.
    Não tem acesso ao kernel: só consegue agir através de syscalls. */
 

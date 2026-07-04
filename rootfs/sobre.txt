@@ -1,4 +1,4 @@
-Syntel OS v0.1.0
+Brain OS v0.1.0
 Sistema operacional educacional x86 (32 bits), escrito do zero.
 
 Ja implementado:

@@ -1,4 +1,4 @@
-# syntel-os
+# brain-os
 
 Projeto educacional de construção de um sistema operacional x86 do zero — sem frameworks, sem abstrações prontas. Cada linha de código tem um motivo.
 
@@ -19,7 +19,7 @@ Neste projeto, construímos cada uma dessas responsabilidades do zero, camada po
 
 ## Arquitetura do projeto
 
-O syntel-os roda em arquitetura **x86 32-bit** (i386), a mesma dos PCs desde os anos 80. É a plataforma mais documentada do mundo para estudo de SOs.
+O brain-os roda em arquitetura **x86 32-bit** (i386), a mesma dos PCs desde os anos 80. É a plataforma mais documentada do mundo para estudo de SOs.
 
 ```
 ┌─────────────────────────────┐

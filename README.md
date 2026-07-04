@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="syntel-os.png" alt="syntel-os" width="100%"/>
+  <img src="brain-os.png" alt="brain-os" width="100%"/>
 </p>
 
-# syntel-os
+# brain-os
 
 SO bare-metal x86 minimalista, escrito do zero para fins educacionais.
 

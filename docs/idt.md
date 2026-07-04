@@ -140,7 +140,7 @@ int y = 1 / x;  // dispara exceção #0
 O resultado esperado na tela:
 
 ```
-syntel-os iniciado
+brain-os iniciado
 IDT carregada
 
 *** EXCEPTION ***

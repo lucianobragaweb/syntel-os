@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-/* SyFS — filesystem read-only mínimo do syntel-os.
+/* SyFS — filesystem read-only mínimo do brain-os.
    Layout no disco (setores de 512 bytes):
      setor 64   superblock: magic "SYFS" (u32) + numero de arquivos (u32)
      setor 65   diretório: 16 entradas de 32 bytes
